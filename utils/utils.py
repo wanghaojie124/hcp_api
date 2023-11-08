@@ -29,3 +29,15 @@ def create_response(
     return IResponseBase(data=data, message=message, errcode=errcode, meta=meta)
 
 
+class MyList:
+
+    def __init__(self, max_length):
+        self.max_length = max_length
+        self.data = list()
+
+    def put(self, data):
+        if len(self.data) >= self.max_length:
+            self.data.append(data)
+            self.data.pop(0)
+        else:
+            self.data.append(data)

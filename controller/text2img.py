@@ -1,7 +1,5 @@
 import os.path
 import time
-import uuid
-import copy
 from queue import Queue
 from loguru import logger
 
@@ -9,7 +7,8 @@ from hcpdiff import visualizer
 from hcpdiff.utils.utils import load_config_with_cli
 from hcpdiff.vis.base_interface import BaseInterface
 
-from config import ROOT_PATH
+from config import ROOT_PATH, OUTPUT_PATH
+from utils.utils import MyList
 
 
 class ProgressInterface(BaseInterface):
@@ -31,39 +30,27 @@ class ProgressInterface(BaseInterface):
 class Text2Image:
 
     def __init__(self):
-        self.model_path = os.path.join(ROOT_PATH, 'models/hcp/')
-        self.base_cfg = {
-            "pretrained_model": os.path.join(self.model_path, os.listdir(self.model_path)[0]),
-            "emb_dir": os.path.join(ROOT_PATH, 'models/embs/'),
-            "save": {
-                "out_dir": os.path.join(ROOT_PATH, 'output'),
-                "save_cfg": True,
-                "image_type": "png",
-                "quality": 95,
-            }
-        }
+        # TODO 限制队列长度
         self.task_queue = Queue()
         self.current_instance = None
         self.task_id = None
         self.progress_interface = ProgressInterface()
+        self.completed_list = MyList(2)
 
-    def add_task(self, **kwargs):
-        self.task_queue.put(kwargs)
+    def add_task(self, args):
+        self.task_queue.put(args)
 
     def task_handler(self):
         while 1:
             args = self.task_queue.get()
-            self.text2img(**args)
+            self.text2img(args)
             time.sleep(0.5)
 
-    def text2img(self, **kwargs):
-        self.task_id = uuid.uuid1().hex
-        cfg_dict = copy.deepcopy(self.base_cfg)
-        cfg_dict.update(kwargs)
+    def text2img(self, args: dict):
         cfgs = load_config_with_cli(
             os.path.join(ROOT_PATH, "HCP-Diffusion/cfgs/infer/text2img.yaml"),
             args_list=[
-                f'{k}={v}' for k, v in cfg_dict.items()
+                f'{k}={v}' for k, v in args.items()
             ]
         )
         self.current_instance = visualizer.Visualizer(cfgs)
@@ -83,18 +70,33 @@ class Text2Image:
                     prompt=prompt, negative_prompt=negative_prompt,
                     seeds=seeds[i * cfgs.bs:(i + 1) * cfgs.bs], save_cfg=cfgs.save.save_cfg,
                     **cfgs.infer_args)
+                self.completed_list.put(self.task_id)
+                self.progress_interface = ProgressInterface()
             except AttributeError:
                 logger.info(f"cancel task: {self.task_id}")
+            finally:
+                self.progress_interface.interrupt = False
 
-    def current_progress(self):
+    def current_progress(self, task_id):
+        # 最近几条完成任务
+        if task_id in self.completed_list.data:
+            return 1
+        else:
+            # 未存储到最近完成列表的已完成任务
+            if os.path.exists(os.path.join(OUTPUT_PATH, task_id)) and task_id != self.task_id:
+                return 1
+
         progress = self.progress_interface.current_step / self.progress_interface.total_step
         return progress
 
     def cancel(self):
         self.progress_interface.interrupt = True
 
+    def download(self):
+        pass
+
 
 engine = Text2Image()
 
 if __name__ == '__main__':
-    engine.text2img(prompt="1girl", num=1, bs=4)
+    pass
