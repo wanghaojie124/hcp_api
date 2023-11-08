@@ -1,4 +1,4 @@
-from typing import Optional, Union, Dict
+from typing import Optional, Dict
 
 from orjson import orjson
 from pydantic.generics import GenericModel
@@ -12,7 +12,7 @@ def orjson_dumps(v, *, default):
 class IResponseBase(GenericModel):
     message: str = ""
     meta: Optional[Dict] = {}
-    data: None | str
+    data: None | str | dict
     errcode: int = 0
 
     class Config:

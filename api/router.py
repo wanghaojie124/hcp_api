@@ -13,11 +13,21 @@ api = APIRouter()
 async def text2image(args: RenderImage):
     engine.add_task(**dict(args))
     task_id = engine.task_id
+    print(task_id)
     return create_response(data={"task_id": task_id}, message="success")
 
 
 @api.get(
-    "progress",
+    "/progress",
 )
 async def get_progress():
-    return create_response()
+    progress = engine.current_progress()
+    return create_response(data={"current_progress": progress}, message="success")
+
+
+@api.get(
+    "/cancel",
+)
+async def cancel():
+    engine.cancel()
+    return create_response(message="success")
