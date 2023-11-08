@@ -1,0 +1,3 @@
+[submodule "HCP-Diffusion"]
+	path = HCP-Diffusion
+	url = https://github.com/7eu7d7/HCP-Diffusion.git
