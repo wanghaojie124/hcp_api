@@ -17,8 +17,11 @@ async def text2image(args: RenderImage):
     task_id = uuid.uuid1().hex
     args.task_id = engine.task_id = task_id
     args.save['out_dir'] = os.path.join(args.save['out_dir'], task_id)
-    engine.add_task(dict(args))
-    return create_response(data={"task_id": task_id}, message="success")
+    res = engine.add_task(dict(args))
+    if res:
+        return create_response(data={"task_id": task_id}, message="success")
+    else:
+        return create_response(data={}, message="当前服务器繁忙，请稍后再试")
 
 
 @api.get(
@@ -33,7 +36,7 @@ async def get_progress(task_id: str):
     "/cancel",
 )
 async def cancel(task_id):
-    engine.cancel()
+    engine.cancel(task_id)
     return create_response(message="success")
 
 
@@ -41,6 +44,6 @@ async def cancel(task_id):
 @api.get(
     "/download",
 )
-async def download():
-
-    return create_response(message="success")
+async def download(task_id):
+    res = engine.get_result(task_id)
+    return create_response(data={"images": res}, message="success")

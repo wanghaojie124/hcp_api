@@ -8,7 +8,7 @@ from hcpdiff.utils.utils import load_config_with_cli
 from hcpdiff.vis.base_interface import BaseInterface
 
 from config import ROOT_PATH, OUTPUT_PATH
-from utils.utils import MyList
+from utils.utils import MyList, list_full_path, image2base64
 
 
 class ProgressInterface(BaseInterface):
@@ -30,19 +30,27 @@ class ProgressInterface(BaseInterface):
 class Text2Image:
 
     def __init__(self):
-        # TODO 限制队列长度
-        self.task_queue = Queue()
+        self.task_queue = Queue(10)
         self.current_instance = None
         self.task_id = None
         self.progress_interface = ProgressInterface()
         self.completed_list = MyList(2)
+        self.to_cancel_task = list()
 
     def add_task(self, args):
+        if self.task_queue.full():
+            return False
         self.task_queue.put(args)
+        return True
 
     def task_handler(self):
         while 1:
             args = self.task_queue.get()
+            task_id = args.get("task_id")
+            # 跳过待取消任务不生成
+            if task_id in self.to_cancel_task:
+                self.to_cancel_task.remove(task_id)
+                continue
             self.text2img(args)
             time.sleep(0.5)
 
@@ -89,11 +97,18 @@ class Text2Image:
         progress = self.progress_interface.current_step / self.progress_interface.total_step
         return progress
 
-    def cancel(self):
-        self.progress_interface.interrupt = True
+    def cancel(self, task_id):
+        # 当前运行中任务，进行打断取消，否则加入取消任务列表
+        if task_id == self.task_id:
+            self.progress_interface.interrupt = True
+        else:
+            self.to_cancel_task.append(task_id)
 
-    def download(self):
-        pass
+    @staticmethod
+    def get_result(task_id):
+        images = list_full_path(os.path.join(OUTPUT_PATH, task_id))
+        images = [image2base64(i) for i in images if i.endswith('.png')]
+        return images
 
 
 engine = Text2Image()

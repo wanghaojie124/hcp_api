@@ -1,3 +1,5 @@
+import os
+import base64
 from typing import Optional, Dict
 
 from orjson import orjson
@@ -41,3 +43,28 @@ class MyList:
             self.data.pop(0)
         else:
             self.data.append(data)
+
+
+def image2base64(image):
+    with open(image, 'rb') as f:
+        b64encode = base64.b64encode(f.read())
+        b64_encode = f"data:image/png;base64,{b64encode.decode()}"
+    return b64_encode
+
+
+def base64_to_image(base64_encod_str: str, save_path: str):
+    if "data:image" in base64_encod_str:
+        base64_encod_str = base64_encod_str.split(",")[-1]
+    img_b64decode = base64.b64decode(base64_encod_str)
+    # 保存图片
+    with open(save_path, 'wb') as png:
+        png.write(img_b64decode)
+
+
+def list_full_path(directory):
+    """
+    以绝对路径列出文件夹下所有文件
+    :param directory:
+    :return:
+    """
+    return [os.path.join(directory, file) for file in os.listdir(directory)]
