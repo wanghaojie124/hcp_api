@@ -8,6 +8,11 @@ __pycache__/
 
 # models
 models/hcp/
+models/controlnet
+models/lora
+
+# cfgs
+cfgs
 
 # images
 output/

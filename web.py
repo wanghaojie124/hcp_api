@@ -19,3 +19,4 @@ async def startup():
     t.start()
 
     init_logging()
+

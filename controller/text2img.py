@@ -1,3 +1,4 @@
+import copy
 import os.path
 import time
 from queue import Queue
@@ -7,7 +8,7 @@ from hcpdiff import visualizer
 from hcpdiff.utils.utils import load_config_with_cli
 from hcpdiff.vis.base_interface import BaseInterface
 
-from config import ROOT_PATH, OUTPUT_PATH
+from config import output_path, t2i_cfg_path
 from utils.utils import MyList, list_full_path, image2base64
 
 
@@ -40,27 +41,26 @@ class Text2Image:
     def add_task(self, args):
         if self.task_queue.full():
             return False
-        self.task_queue.put(args)
+        data = copy.deepcopy(args)
+        self.task_queue.put(data)
         return True
 
     def task_handler(self):
         while 1:
-            args = self.task_queue.get()
-            task_id = args.get("task_id")
-            # 跳过待取消任务不生成
-            if task_id in self.to_cancel_task:
-                self.to_cancel_task.remove(task_id)
-                continue
-            self.text2img(args)
-            time.sleep(0.5)
+            try:
+                args = self.task_queue.get()
+                task_id = args.get("task_id")
+                # 跳过待取消任务不生成
+                if task_id in self.to_cancel_task:
+                    self.to_cancel_task.remove(task_id)
+                    continue
+                print(args)
+                self.run(args)
+                time.sleep(0.5)
+            except Exception as e:
+                logger.error(e)
 
-    def text2img(self, args: dict):
-        cfgs = load_config_with_cli(
-            os.path.join(ROOT_PATH, "HCP-Diffusion/cfgs/infer/text2img.yaml"),
-            args_list=[
-                f'{k}={v}' for k, v in args.items()
-            ]
-        )
+    def generate_img(self, cfgs):
         self.current_instance = visualizer.Visualizer(cfgs)
         self.current_instance.cfgs.interface.append(self.progress_interface)
         if cfgs.seed is not None:
@@ -85,13 +85,27 @@ class Text2Image:
             finally:
                 self.progress_interface.interrupt = False
 
+    def run(self, args: dict):
+        condition = args.get('condition', {})
+        if condition:
+            cfgs = load_config_with_cli(t2i_cfg_path)
+            cfgs.update(args)
+            self.generate_img(cfgs)
+        else:
+            cfgs = load_config_with_cli(t2i_cfg_path)
+            cfgs.update(args)
+            self.generate_img(cfgs)
+
+    def save_image(self, image: str, task_id):
+        pass
+
     def current_progress(self, task_id):
         # 最近几条完成任务
         if task_id in self.completed_list.data:
             return 1
         else:
             # 未存储到最近完成列表的已完成任务
-            if os.path.exists(os.path.join(OUTPUT_PATH, task_id)) and task_id != self.task_id:
+            if os.path.exists(os.path.join(output_path, task_id)) and task_id != self.task_id:
                 return 1
 
         progress = self.progress_interface.current_step / self.progress_interface.total_step
@@ -106,7 +120,12 @@ class Text2Image:
 
     @staticmethod
     def get_result(task_id):
-        images = list_full_path(os.path.join(OUTPUT_PATH, task_id))
+        task_dir = os.path.join(output_path, task_id)
+        if not os.path.exists(task_dir):
+            return list()
+        images = list_full_path(task_dir)
+        if not images:
+            return list()
         images = [image2base64(i) for i in images if i.endswith('.png')]
         return images
 

@@ -57,8 +57,8 @@ def base64_to_image(base64_encod_str: str, save_path: str):
         base64_encod_str = base64_encod_str.split(",")[-1]
     img_b64decode = base64.b64decode(base64_encod_str)
     # 保存图片
-    with open(save_path, 'wb') as png:
-        png.write(img_b64decode)
+    with open(save_path, 'wb') as img:
+        img.write(img_b64decode)
 
 
 def list_full_path(directory):
