@@ -8,7 +8,7 @@ from hcpdiff import visualizer
 from hcpdiff.utils.utils import load_config_with_cli
 from hcpdiff.vis.base_interface import BaseInterface
 
-from config import output_path, t2i_cfg_path
+from config import output_path, t2i_cfg_path, i2i_cfg_path, GPU_LOCK
 from utils.utils import MyList, list_full_path, image2base64
 
 
@@ -49,16 +49,20 @@ class Text2Image:
         while 1:
             try:
                 args = self.task_queue.get()
+                GPU_LOCK.acquire()
                 task_id = args.get("task_id")
                 # 跳过待取消任务不生成
                 if task_id in self.to_cancel_task:
                     self.to_cancel_task.remove(task_id)
                     continue
-                print(args)
+                self.task_id = task_id
                 self.run(args)
+                GPU_LOCK.release()
                 time.sleep(0.5)
             except Exception as e:
                 logger.error(e)
+            finally:
+                GPU_LOCK.release()
 
     def generate_img(self, cfgs):
         self.current_instance = visualizer.Visualizer(cfgs)
@@ -88,7 +92,7 @@ class Text2Image:
     def run(self, args: dict):
         condition = args.get('condition', {})
         if condition:
-            cfgs = load_config_with_cli(t2i_cfg_path)
+            cfgs = load_config_with_cli(i2i_cfg_path)
             cfgs.update(args)
             self.generate_img(cfgs)
         else:

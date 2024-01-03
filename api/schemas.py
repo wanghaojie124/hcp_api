@@ -40,3 +40,16 @@ class RenderImage(BaseModel):
     infer_args: dict = Field(default=dict(InferArgsTemplate()))
     lora: List[LoraTemplate] = Field(default=None, description="lora模型列表")
 
+
+class TrainTemplate(BaseModel):
+    task_id: str = Field(description="上传数据集后返回的任务id")
+    model_name: str = Field(description="底模名称")
+    clip_skip: int = Field(default=1)
+    pt_name: str = Field(default="pt-1")
+    unet_rank: int = Field(default=8)
+    text_encoder_rank: int = Field(default=4)
+    batch_size: int = Field(default=4)
+    tokenizer_pt_lr: float = Field(default=0.003)
+    lora_unet_lr: float = Field(default=1e-4)
+    lora_text_encoder_lr: float = Field(default=1e-5)
+

@@ -10,6 +10,8 @@ __pycache__/
 models/hcp/
 models/controlnet
 models/lora
+train_data
+
 
 # cfgs
 cfgs
