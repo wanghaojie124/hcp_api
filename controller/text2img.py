@@ -50,6 +50,7 @@ class Text2Image:
             try:
                 args = self.task_queue.get()
                 GPU_LOCK.acquire()
+                logger.info(f"当前生图任务剩余：{self.task_queue.qsize()}")
                 task_id = args.get("task_id")
                 # 跳过待取消任务不生成
                 if task_id in self.to_cancel_task:
@@ -58,6 +59,7 @@ class Text2Image:
                 self.task_id = task_id
                 self.run(args)
                 GPU_LOCK.release()
+                logger.info(f"{task_id}完成")
                 time.sleep(0.5)
             except Exception as e:
                 logger.error(e)

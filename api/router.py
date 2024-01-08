@@ -8,6 +8,7 @@ from fastapi import APIRouter, UploadFile, File
 from controller.text2img import engine
 from controller.train import trainer
 from hcpdiff.utils.utils import load_config_with_cli
+from logger import logger
 from api.schemas import RenderImage, TrainTemplate
 from utils.utils import create_response, base64_to_image
 from config import embs_path, save_cfg, output_path, model_path, ex_input, cnet_merge, controlnet_model_path,\
@@ -147,7 +148,9 @@ async def train(args: TrainTemplate):
 async def upload_dataset(file: UploadFile = File(...)):
     task_id = uuid.uuid1().hex[:7]
     filename = os.path.join(train_data_path, f"{task_id}.zip")
+    logger.info(f"start upload dataset, task_id:{task_id}")
     contents = await file.read()
     with open(filename, "wb+") as f:
         f.write(contents)
+    logger.info(f"upload dataset success, task_id:{task_id}")
     return create_response(data={"task_id": task_id}, message="success")
